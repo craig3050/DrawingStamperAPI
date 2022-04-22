@@ -2,10 +2,12 @@ from fastapi import FastAPI, UploadFile
 from fastapi.responses import FileResponse
 import secrets
 import os
+from os.path import basename
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
 from pdf_annotate import PdfAnnotator, Location, Appearance
 from datetime import date
+import zipfile
 
 app = FastAPI()
 
@@ -157,6 +159,15 @@ def add_stamp_to_drawing(filepath, file_name, project_number, received_date, use
     return
 
 
+def zip_the_stamped_files(filepath_main, filepath_stamped):
+    zip_file_name = f"{filepath_main}/Stamped_Files.zip"
+    with zipfile.ZipFile(zip_file_name, 'w') as zip_file:
+        for file in os.listdir(filepath_stamped):
+            print(file)
+            #zip_file.write(f"{filepath_stamped}/{file}", compress_type=zipfile.ZIP_DEFLATED)
+            zip_file.write(f"{filepath_stamped}/{file}", basename(f"{filepath_stamped}/{file}"))
+    return f"{filepath_main}/Stamped_Files.zip"
+
 
 @app.post("/uploadfiles/{stamp_type}/{project_number}/{received_date}/{user_initials}/{initial_status}/{optional_text}")
 async def create_upload_files(files: list[UploadFile], stamp_type: str, project_number: str, received_date: str, user_initials: str, initial_status: str, optional_text: str):
@@ -183,8 +194,8 @@ async def create_upload_files(files: list[UploadFile], stamp_type: str, project_
         add_stamp_to_drawing(filepath, file.filename, project_number, received_date, user_initials, initial_status)
 
     # Return a zip of all the stamped drawings
-    file_to_be_returned = f"ReceivedFiles/{unique_code}/{files[0].filename}"
-
+    #file_to_be_returned = f"ReceivedFiles/{unique_code}/{files[0].filename}"
+    file_to_be_returned = zip_the_stamped_files(filepath, f"{filepath }/Stamped")
     return FileResponse(file_to_be_returned)
 
 
