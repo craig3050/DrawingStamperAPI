@@ -32,9 +32,9 @@ def make_token():
 def create_blank_stamp(stamp_type, optional_text):
     # Work out what words to use for the stamp
     if stamp_type == "A":
-        text_for_stamp = "Insert stamp A words here"
+        text_for_stamp = "The Consultant’s review of this document is for the purpose of ascertaining compliance with the Project MEP Design Responsibility as defined in the contract documents. The review is based solely on the information presented on these documents, any errors or omissions in this submission will remain with the Contractor for meeting all the requirements of the Contract Documents, including all CDP works."
     elif stamp_type == "B":
-        text_for_stamp = "Insert stamp B words here"
+        text_for_stamp = "The Consultant's review of this document is for the purpose of ascertaining conformity with the basic concept, profile and general arrangement only. The review shall not be construed to mean that BDP accept the detail design inherent in the drawing, responsibility for which will remain with the Contractor. The Contractor is responsible for any errors or omissions in the drawing and for meeting all the requirements of the Contract Documents."
     else:
         text_for_stamp = optional_text
 
@@ -170,7 +170,8 @@ def zip_the_stamped_files(filepath_main, filepath_stamped):
 
 
 @app.post("/uploadfiles/{stamp_type}/{project_number}/{received_date}/{user_initials}/{initial_status}/{optional_text}")
-async def create_upload_files(files: list[UploadFile], stamp_type: str, project_number: str, received_date: str, user_initials: str, initial_status: str, optional_text: str):
+async def create_upload_files(files: list[UploadFile], stamp_type: str, project_number: str, received_date:
+str, user_initials: str, initial_status: str, optional_text: str):
 
     # Create a unique code for the folder where the files are kept
     unique_code = make_token()
