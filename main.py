@@ -4,6 +4,8 @@ import secrets
 import os
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
+from pdf_annotate import PdfAnnotator, Location, Appearance
+from datetime import date
 
 app = FastAPI()
 
@@ -25,13 +27,13 @@ def make_token():
     return secrets.token_urlsafe(16)
 
 
-def create_blank_stamp(filepath, stamp_type, optional_text):
+def create_blank_stamp(stamp_type, optional_text):
     # Work out what words to use for the stamp
     if stamp_type == "A":
         text_for_stamp = "Insert stamp A words here"
     elif stamp_type == "B":
         text_for_stamp = "Insert stamp B words here"
-    elif stamp_type == "C":
+    else:
         text_for_stamp = optional_text
 
     # Create the drawing stamp with logo
@@ -66,13 +68,94 @@ def create_blank_stamp(filepath, stamp_type, optional_text):
         # draw.text((x, y),"Sample Text",(r,g,b))
         draw.text((40, starting_point), line, (255, 0, 0), font=font)
         starting_point += text_spacing
-    full_drawing_file_path = f"{filepath}/Blank_Stamp.png"
-    blank_stamp_copy.save(full_drawing_file_path)
+
     return blank_stamp_copy
 
 
-def add_stamp_to_drawing(file_name, project_number, received_date, user_initials, initial_status):
-    pass
+def add_stamp_to_drawing(filepath, file_name, project_number, received_date, user_initials, initial_status):
+    filepath_for_stamped_files = f"{filepath}/Stamped"
+    # Check whether the specified path exists or not
+    isExist = os.path.exists(filepath_for_stamped_files)
+    if not isExist:
+        # Create a new directory because it does not exist
+        os.makedirs(filepath_for_stamped_files)
+        print("The new directory is created!")
+
+    today = date.today()
+    today_date = today.strftime("%d/%m/%y")
+
+    full_drawing_path = f"{filepath}/{file_name}"
+    full_path_drawing_stamp = f"{filepath}/Blank_Stamp.png"
+    a = PdfAnnotator(full_drawing_path)
+    # Add the stamp to the drawing
+    a.add_annotation(
+        'image',
+        Location(x1=50, y1=50, x2=400, y2=400, page=0),
+        Appearance(image=full_path_drawing_stamp)
+    )
+    # Add Project Number
+    a.add_annotation(
+        'text',
+        Location(x1=120, y1=320, x2=300, y2=332, page=0),
+        Appearance(stroke_color=(1, 1, 1), stroke_width=5, content=project_number,
+                   fill=(0.705, 0.094, 0.125, 1))
+    )
+    # Add Received Date
+    a.add_annotation(
+        'text',
+        Location(x1=130, y1=305, x2=300, y2=317, page=0),
+        Appearance(stroke_color=(1, 1, 1), stroke_width=5, content=received_date,
+                   fill=(0.705, 0.094, 0.125, 1))
+    )
+    # Add User Initials
+    a.add_annotation(
+        'text',
+        Location(x1=75, y1=276, x2=300, y2=288, page=0),
+        Appearance(stroke_color=(1, 1, 1), stroke_width=5,
+                   content=user_initials, fill=(0.705, 0.094, 0.125, 1))
+    )
+    # Add Initial Status
+    a.add_annotation(
+        'text',
+        Location(x1=200, y1=276, x2=320, y2=288, page=0),
+        Appearance(stroke_color=(1, 1, 1), stroke_width=5, content=f"Status {initial_status}",
+                   fill=(0.705, 0.094, 0.125, 1))
+    )
+    # Add Today's Date
+    a.add_annotation(
+        'text',
+        Location(x1=330, y1=276, x2=400, y2=288, page=0),
+        Appearance(stroke_color=(1, 1, 1), stroke_width=5, content=today_date, fill=(0.705, 0.094, 0.125, 1))
+    )
+
+    # Put an X in the box noting the status
+    if initial_status == "A":
+        a.add_annotation(
+            'text',
+            Location(x1=117, y1=203, x2=300, y2=215, page=0),
+            Appearance(stroke_color=(1, 1, 1), stroke_width=5,
+                       content="X", fill=(0.705, 0.094, 0.125, 1))
+        )
+    if initial_status == "B":
+        a.add_annotation(
+            'text',
+            Location(x1=117, y1=189, x2=300, y2=201, page=0),
+            Appearance(stroke_color=(1, 1, 1), stroke_width=5,
+                       content="X", fill=(0.705, 0.094, 0.125, 1))
+        )
+    if initial_status == "C":
+        a.add_annotation(
+            'text',
+            Location(x1=117, y1=174, x2=300, y2=186, page=0),
+            Appearance(stroke_color=(1, 1, 1), stroke_width=5,
+                       content="X", fill=(0.705, 0.094, 0.125, 1))
+        )
+
+    # Write the resultant file
+    a.write(f'{filepath_for_stamped_files}/{file_name}')
+
+    return
+
 
 
 @app.post("/uploadfiles/{stamp_type}/{project_number}/{received_date}/{user_initials}/{initial_status}/{optional_text}")
@@ -90,9 +173,16 @@ async def create_upload_files(files: list[UploadFile], stamp_type: str, project_
             filepath = f"ReceivedFiles/{unique_code}"
             save_file(filepath, file.filename, contents)
 
-    # Create the drawing stamp
-    drawing_stamp = create_blank_stamp(filepath, stamp_type, optional_text)
+    # Create and save the drawing stamp
+    drawing_stamp = create_blank_stamp(stamp_type, optional_text)
+    full_drawing_file_path = f"{filepath}/Blank_Stamp.png"
+    drawing_stamp.save(full_drawing_file_path)
 
+    # Stamp the files
+    for file in files:
+        add_stamp_to_drawing(filepath, file.filename, project_number, received_date, user_initials, initial_status)
+
+    # Return a zip of all the stamped drawings
     file_to_be_returned = f"ReceivedFiles/{unique_code}/{files[0].filename}"
 
     return FileResponse(file_to_be_returned)
