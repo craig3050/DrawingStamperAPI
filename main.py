@@ -8,8 +8,10 @@ import textwrap
 from pdf_annotate import PdfAnnotator, Location, Appearance
 from datetime import date
 import zipfile
+from mangum import Mangum
 
 app = FastAPI()
+
 
 def save_file(filepath, filename, data):
     # Check whether the specified path exists or not
@@ -164,7 +166,7 @@ def zip_the_stamped_files(filepath_main, filepath_stamped):
     with zipfile.ZipFile(zip_file_name, 'w') as zip_file:
         for file in os.listdir(filepath_stamped):
             print(file)
-            #zip_file.write(f"{filepath_stamped}/{file}", compress_type=zipfile.ZIP_DEFLATED)
+            # zip_file.write(f"{filepath_stamped}/{file}", compress_type=zipfile.ZIP_DEFLATED)
             zip_file.write(f"{filepath_stamped}/{file}", basename(f"{filepath_stamped}/{file}"))
     return f"{filepath_main}/Stamped_Files.zip"
 
@@ -172,7 +174,6 @@ def zip_the_stamped_files(filepath_main, filepath_stamped):
 @app.post("/uploadfiles/{stamp_type}/{project_number}/{received_date}/{user_initials}/{initial_status}/{optional_text}")
 async def create_upload_files(files: list[UploadFile], stamp_type: str, project_number: str, received_date:
 str, user_initials: str, initial_status: str, optional_text: str):
-
     # Create a unique code for the folder where the files are kept
     unique_code = make_token()
 
@@ -181,9 +182,9 @@ str, user_initials: str, initial_status: str, optional_text: str):
 
     # Create a directory and save the files
     for file in files:
-            contents = await file.read()
-            filepath = f"ReceivedFiles/{unique_code}"
-            save_file(filepath, file.filename, contents)
+        contents = await file.read()
+        filepath = f"ReceivedFiles/{unique_code}"
+        save_file(filepath, file.filename, contents)
 
     # Create and save the drawing stamp
     drawing_stamp = create_blank_stamp(stamp_type, optional_text)
@@ -195,9 +196,9 @@ str, user_initials: str, initial_status: str, optional_text: str):
         add_stamp_to_drawing(filepath, file.filename, project_number, received_date, user_initials, initial_status)
 
     # Return a zip of all the stamped drawings
-    #file_to_be_returned = f"ReceivedFiles/{unique_code}/{files[0].filename}"
-    file_to_be_returned = zip_the_stamped_files(filepath, f"{filepath }/Stamped")
+    # file_to_be_returned = f"ReceivedFiles/{unique_code}/{files[0].filename}"
+    file_to_be_returned = zip_the_stamped_files(filepath, f"{filepath}/Stamped")
     return FileResponse(file_to_be_returned)
 
 
-
+handler = Mangum(app)
